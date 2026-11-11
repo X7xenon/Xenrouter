@@ -1,0 +1,137 @@
+host: 127.0.0.1
+port: 8989
+auto_probe_local: true
+import_hermes_providers: true
+health_check_interval: 15.0
+default_model: deepseek-v4.1-flash
+max_history_logs: 200
+backends:
+- name: ollama
+  type: ollama
+  base_url: http://127.0.0.1:11434
+  enabled: true
+  priority: 1
+  timeout: 180.0
+  max_concurrency: 4
+- name: lmstudio
+  type: lmstudio
+  base_url: http://127.0.0.1:1234
+  enabled: true
+  priority: 2
+  timeout: 180.0
+  max_concurrency: 2
+- name: llamacpp
+  type: llamacpp
+  base_url: http://127.0.0.1:8080
+  enabled: true
+  priority: 3
+  timeout: 180.0
+  max_concurrency: 2
+- name: vllm
+  type: vllm
+  base_url: http://127.0.0.1:8000
+  enabled: true
+  priority: 1
+  timeout: 180.0
+  max_concurrency: 8
+  key_rotation_strategy: round_robin
+  key_cooldown_seconds: 60.0
+  api_keys:
+  - sk-local-vllm-alpha
+  - sk-local-vllm-beta
+aliases:
+  auto:
+    targets:
+    - free/deepseek-v4.1-flash
+    - coding
+    - fast
+    - general
+    description: APInex free/deepseek-v4.1-flash first, cascading by tokens and RPM
+      >= 15
+  coding:
+    targets:
+    - free/deepseek-v4.1-flash
+    - qwen3.8-omni-flash:free
+    - wusrouter/qwen3.8-flash:free
+    - qwen/qwen3.8-27b
+    - deepseek-v4.1-flash
+    - deepseek-v4.1-flash:free
+    - deepseek-ai/DeepSeek-V4.1-Flash
+    - mercury-3
+    - zro/deepseek-v4.1-flash
+    - gemini-3.8-flash
+    - free/glm-5.3-flash
+    - openai/gpt-oss-120b
+    - llama-3.3-70b-versatile
+    - hermes-3-llama-3.1-70b
+    - llama-3.3-70b-instruct:free
+    - Qwen/Qwen3-8B
+    - coarena/gemini-3-8-flash
+    - coarena/deepseek-v4-1-flash-1017
+    - coarena/claude-sonnet-5-5
+    - coarena/qwen3-8-2-4t-a95b
+    description: Daily limit providers first (APInex -> xKiro -> WusRouter -> IteraCompute),
+      cascading to grants & permanent free
+  fast:
+    targets:
+    - free/deepseek-v4.1-flash
+    - mercury-2.5
+    - coarena/glm-5-3-flash
+    - coarena/gemini-3-8-flash
+    - gemini-3.8-flash
+    - wusrouter/qwen3.8-flash:free
+    - free/glm-5.3-flash
+    - Qwen/Qwen3-8B
+    - qwen7b
+    description: Ultra-fast low-latency autocomplete cascade
+  reasoning:
+    targets:
+    - free/deepseek-v4.1-flash
+    - mercury-decide
+    - claude-opus-5-5
+    - DeepSeek-R1-Distill-Qwen-7B
+    - mercury-3
+    - gemini-3.8-flash
+    - qwen/qwen3.8-max:free
+    - coarena/claude-opus-5-5
+    - coarena/deepseek-v4-1-flash-1017
+    - coarena/gemini-3-8-flash
+    description: Deep reasoning and chain of thought cascade
+  general:
+    targets:
+    - free/deepseek-v4.1-flash
+    - gemini-3.8-flash
+    - gpt-6-astra
+    - openai/gpt-oss-120b
+    - wusrouter/qwen3.8-flash:free
+    - qwen/qwen3.8-27b
+    - hermes-3-llama-3.1-70b
+    - coarena/gemini-3-8-flash
+    - coarena/gpt-6-astra
+    - coarena/claude-sonnet-5-5
+    description: General conversational and instruction models
+  gpt-4o:
+    targets:
+    - coding
+    - general
+    description: Drop-in alias for clients requesting gpt-4o
+  gpt-4:
+    targets:
+    - coding
+    - general
+    description: Drop-in alias for clients requesting gpt-4
+  claude-3-5-sonnet:
+    targets:
+    - coding
+    - reasoning
+    description: Drop-in alias for clients requesting Claude 3.5 Sonnet
+  deepseek-v4.1-flash:
+    targets:
+    - free/deepseek-v4.1-flash
+    - coarena/deepseek-v4-1-flash-1017
+    - deepseek-v4.1-flash:free
+    - deepseek-ai/DeepSeek-V4.1-Flash
+    - zro/deepseek-v4.1-flash
+    description: Priority cascade for DeepSeek V4.1 Flash across Apinex, Coarena,
+      Tokenharbor, River AI, and Moonmath
+    strategy: priority
