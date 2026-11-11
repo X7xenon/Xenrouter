@@ -360,6 +360,16 @@ def start(
             return
 
     registry = BackendRegistry()
+    for b_cfg in cfg.backends:
+        registry.register(b_cfg)
+    if cfg.import_hermes_providers:
+        try:
+            for h_cfg in discover_hermes_backends():
+                if not registry.get(h_cfg.name):
+                    registry.register(h_cfg)
+        except Exception:
+            pass
+
     state = AppState(cfg)
     router = Router(cfg, registry)
     fastapi_app = create_app(cfg, state, registry, router)

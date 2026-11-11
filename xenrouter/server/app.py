@@ -41,9 +41,10 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         nonlocal health_task
-        # Register configured backends
+        # Pre-populate registry if not already registered
         for b_cfg in config.backends:
-            registry.register(b_cfg)
+            if not registry.get(b_cfg.name):
+                registry.register(b_cfg)
 
         # Import Hermes providers if enabled
         if config.import_hermes_providers:
@@ -71,10 +72,7 @@ def create_app(
                     )
                     registry.register(new_cfg)
 
-        # Initial health check and model discovery
-        await registry.refresh_all(client)
-
-        # Launch periodic health check task
+        # Launch periodic health check task in background immediately
         health_task = asyncio.create_task(background_health_checker())
 
         yield
