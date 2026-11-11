@@ -1023,4 +1023,45 @@ Fulfill Big Boss's requests to view daily and monthly usage in Xenrouter by pres
 Pressing `u` in Xenrouter displays persistent Daily & Monthly Usage analytics cleanly, `xenrouter usage` works offline and online, 23/23 tests pass, and the codebase is sanitized and ready for GitHub.
 
 
+## 2026-11-12 00:03 - Comprehensive End-to-End Verification & Server Startup Optimization
+
+### Action
+1. Diagnosed TUI Initial Zero-Node Rendering:
+   - Root cause: FastAPI lifespan previously performed blocking network pings (`await registry.refresh_all(client)`) before yielding control to uvicorn, which delayed port binding by over 4 seconds while the dashboard launched immediately and found an unpopulated registry.
+   - Solution: Pre-populated `BackendRegistry` with configured backends and Hermes auto-discovered nodes immediately in `xenrouter/cli.py` before starting FastAPI, and switched initial health check to a background non-blocking task inside `xenrouter/server/app.py`.
+   - Result: Daemon binds to port 8989 in < 50ms, and the TUI immediately shows all 26 nodes without transient empty table states.
+2. Comprehensive Live End-to-End Verification (`scratch/run_e2e_verification.py`):
+   - Executed live against daemon at `http://127.0.0.1:8989`:
+     - Root Metadata `GET /`: Status 200, name 'Xenrouter', status 'ONLINE'.
+     - Health Check `GET /v1/health`: Status 200, status 'healthy', 22/26 nodes online.
+     - Metrics `GET /v1/metrics`: Status 200, accurate request and token counters.
+     - Backends Catalog `GET /v1/backends`: Status 200, Coarena verified online with 2-key rotation pool and 12 live models.
+     - Unified Models List `GET /v1/models`: Status 200, 2,570 unified models and virtual aliases.
+     - Direct Chat Completion `POST /v1/chat/completions`: Verified `coarena/deepseek-v4-1-flash-1017` returning accurate answer.
+     - Cascade Chat Completion: Verified priority cascade `deepseek-v4.1-flash` and `coding` cascade.
+     - Streaming Chat (SSE): 33 chunks streamed with `[DONE]` termination.
+     - Legacy Adapter `POST /v1/completions`: Forwarded prompt converted to chat completion successfully.
+     - Persistent Usage Analytics `GET /v1/usage`: Tracked 22 requests and 2,712 tokens into `~/.xenrouter/usage.db`.
+3. CLI Commands Verification:
+   - Tested `xenrouter usage`: Rendered Daily, Monthly, and Provider breakdown cards.
+   - Tested `xenrouter models`: Rendered unified model catalog.
+4. Pytest Test Suite:
+   - Executed `python -m pytest tests/`: 23/23 tests passed cleanly.
+5. GitHub Synchronization:
+   - Pushed startup improvements to `https://github.com/X7xenon/Xenrouter` (commit `59999d0`).
+
+### Reason
+Fulfill Big Boss's requirement for complete end-to-end testing, eliminate startup lag, and verify all routing cascades and analytics across the full stack.
+
+### Files
+- `xenrouter/cli.py`
+- `xenrouter/server/app.py`
+- `scratch/run_e2e_verification.py`
+- `docs/JOURNAL.md`
+
+### Result
+All 11 end-to-end verification checks passed 100%, 22 inference backends online, Coarena 2-key pool operational, usage tracking persisted into SQLite, and all 23 pytest tests passed.
+
+
+
 
