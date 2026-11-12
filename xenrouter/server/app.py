@@ -113,7 +113,10 @@ def create_app(
                 "embeddings": "/v1/embeddings",
                 "health": "/v1/health",
                 "metrics": "/v1/metrics",
-                "backends": "/v1/backends"
+                "backends": "/v1/backends",
+                "usage": "/v1/usage",
+                "reload": "/v1/reload",
+                "refresh": "/v1/refresh"
             }
         }
 
@@ -235,5 +238,85 @@ def create_app(
     async def get_usage(days: int = 30, months: int = 12):
         """Return persistent daily and monthly token/request usage analytics."""
         return state.get_usage_summary(days=days, months=months)
+
+    @app.post("/v1/reload")
+    @app.post("/v1/refresh")
+    @app.get("/v1/reload")
+    @app.get("/v1/refresh")
+    async def reload_endpoints(sync: bool = False):
+        """Reload configuration, re-discover Hermes backends, probe ports, and refresh all health checks."""
+        # 1. Reload config from disk
+        try:
+            from xenrouter.config import load_config
+            new_cfg = load_config()
+            config.default_model = new_cfg.default_model
+            config.aliases = new_cfg.aliases
+            config.fallbacks = new_cfg.fallbacks
+            for b_cfg in new_cfg.backends:
+                existing = registry.get(b_cfg.name)
+                if existing:
+                    existing.config = b_cfg
+                    existing.base_url = b_cfg.base_url
+                    existing.enabled = b_cfg.enabled
+                    if b_cfg.api_keys:
+                        existing.key_rotator.set_keys(b_cfg.api_keys)
+                else:
+                    registry.register(b_cfg)
+        except Exception:
+            pass
+
+        # 2. Re-discover Hermes backends
+        if config.import_hermes_providers:
+            try:
+                from xenrouter.backends.hermes_importer import discover_hermes_backends
+                hermes_backends = discover_hermes_backends()
+                for h_cfg in hermes_backends:
+                    existing = registry.get(h_cfg.name)
+                    if existing:
+                        existing.config = h_cfg
+                        existing.base_url = h_cfg.base_url
+                        existing.enabled = h_cfg.enabled
+                        if h_cfg.api_keys:
+                            existing.key_rotator.set_keys(h_cfg.api_keys)
+                    else:
+                        registry.register(h_cfg)
+            except Exception:
+                pass
+
+        async def _run_background_reload():
+            try:
+                if config.auto_probe_local:
+                    discovered = await BackendRegistry.probe_local_ports(client)
+                    for item in discovered:
+                        if not registry.get(item["name"]):
+                            from xenrouter.types import BackendConfig, BackendType
+                            new_cfg = BackendConfig(
+                                name=item["name"],
+                                type=item["type"],
+                                base_url=item["base_url"],
+                                enabled=True
+                            )
+                            registry.register(new_cfg)
+                await registry.refresh_all(client)
+            except Exception:
+                pass
+
+        if sync:
+            await _run_background_reload()
+        else:
+            asyncio.create_task(_run_background_reload())
+
+        online_count = len(registry.online())
+        total_count = len(registry.all())
+        models_count = len(router.get_unified_models_list())
+
+        return {
+            "status": "ok",
+            "message": "Xenrouter configuration reloaded; provider health refresh in progress.",
+            "online_backends_count": online_count,
+            "total_backends_count": total_count,
+            "models_count": models_count,
+            "uptime_seconds": round(state.get_metrics().uptime_seconds, 1)
+        }
 
     return app

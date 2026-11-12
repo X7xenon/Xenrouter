@@ -288,3 +288,42 @@ def test_usage_tui_view_and_hotkey_footer(tmp_path):
         state.usage_tracker.close()
 
 
+def test_reload_and_refresh_tui_and_keypresses():
+    from xenrouter.cli import _handle_tui_keypress
+    from unittest.mock import MagicMock
+
+    cfg = load_config()
+    state = AppState(cfg)
+    reg = BackendRegistry()
+    dash = TUIDashboard(cfg, state, reg)
+
+    # Footer verification
+    f_dash = render_footer("dashboard")
+    assert "[r] Reload" in f_dash.plain
+    assert "[g] Routes Graph" in f_dash.plain
+
+    f_routes = render_footer("routes")
+    assert "[r] Reload" in f_routes.plain
+
+    # Test 'g' toggles Routes view and back
+    mock_live = MagicMock()
+    quit_req = _handle_tui_keypress("g", dash, cfg, reg, mock_live)
+    assert not quit_req
+    assert dash.current_view == TUIView.ROUTES
+
+    quit_req = _handle_tui_keypress("g", dash, cfg, reg, mock_live)
+    assert not quit_req
+    assert dash.current_view == TUIView.DASHBOARD
+
+    # Test 'r' triggers reload notification
+    quit_req = _handle_tui_keypress("r", dash, cfg, reg, mock_live)
+    assert not quit_req
+    assert "RELOADING" in dash.notification
+
+    # Test 'f5' triggers reload notification
+    quit_req = _handle_tui_keypress("f5", dash, cfg, reg, mock_live)
+    assert not quit_req
+    assert "RELOADING" in dash.notification
+
+
+

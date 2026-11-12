@@ -1063,5 +1063,41 @@ Fulfill Big Boss's requirement for complete end-to-end testing, eliminate startu
 All 11 end-to-end verification checks passed 100%, 22 inference backends online, Coarena 2-key pool operational, usage tracking persisted into SQLite, and all 23 pytest tests passed.
 
 
+## 2026-11-12 12:35 - Dynamic Reload & Refresh Hotkey (`r`/`F5`/`Ctrl+R`), REST Endpoints & CLI Commands
+
+### Action
+1. Dynamic Reload & Refresh Architecture:
+   - Added REST endpoints: `POST /v1/reload`, `POST /v1/refresh`, `GET /v1/reload`, `GET /v1/refresh` in `xenrouter/server/app.py`.
+   - Reloads `xenrouter.yaml` configuration, re-reads default model and virtual cascades, re-discovers Hermes Agent providers, and triggers background health check and local port probes without blocking the HTTP response (< 15ms).
+   - Added `reload_and_refresh()` method to `TUIDashboard` (`xenrouter/tui/dashboard.py`).
+2. Interactive TUI Integration:
+   - Added hotkeys `r`, `F5`, and `Ctrl+R` to trigger immediate background configuration reload and backend health/model refresh.
+   - Dedicated key `r` exclusively to Reload/Refresh, remapping Routes Graph view toggle to key `g`.
+   - Updated `render_footer()` in `xenrouter/tui/components.py` to display `[r] Reload` across all views (Dashboard, Routes, Models, Providers, Limits, Usage, Welcome).
+   - Displayed live notification banner during and after reload: `RELOAD COMPLETE | 22/26 nodes online (2576 models)`.
+3. CLI Commands:
+   - Implemented `xenrouter reload` and `xenrouter refresh` commands in `xenrouter/cli.py` with live daemon integration and Rich table output, with graceful offline fallback.
+4. Comprehensive Automated Tests:
+   - Added `test_reload_and_refresh_endpoints` in `tests/test_server.py`.
+   - Added `test_reload_and_refresh_tui_and_keypresses` in `tests/test_tui_and_limits.py`.
+   - Verified all 25 automated tests across the test suite.
+
+### Reason
+Fulfill Big Boss's request: "xenrouter m ek refresh ya reload button daal plu testing bhi karliyo" to allow instantaneous hotkey reloads in the TUI, one-click CLI refreshes, and API-driven reload triggers without restarting the daemon.
+
+### Files
+- `xenrouter/server/app.py`
+- `xenrouter/tui/dashboard.py`
+- `xenrouter/tui/components.py`
+- `xenrouter/cli.py`
+- `tests/test_server.py`
+- `tests/test_tui_and_limits.py`
+- `docs/JOURNAL.md`
+
+### Result
+Reload and refresh can be triggered at any time via TUI hotkey `r`/`F5`/`Ctrl+R`, CLI command `xenrouter reload`, or REST endpoint `/v1/reload`. All 25 unit and integration tests passed cleanly.
+
+
+
 
 

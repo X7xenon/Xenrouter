@@ -1035,7 +1035,8 @@ def render_footer(current_view: str = "dashboard", notification: str = "") -> Te
     footer.append(" [q] Quit  ", style="bold white")
 
     if current_view == "dashboard":
-        footer.append("[r] Routes Graph  ", style="bold yellow")
+        footer.append("[r] Reload  ", style="bold green")
+        footer.append("[g] Routes Graph  ", style="bold yellow")
         footer.append("[m] Models View  ", style="bold cyan")
         footer.append("[p] Providers Directory  ", style="cyan")
         footer.append("[l] Limits & Quotas  ", style="magenta")
@@ -1045,18 +1046,21 @@ def render_footer(current_view: str = "dashboard", notification: str = "") -> Te
         footer.append("[t] Quick Test", style="green")
     elif current_view == "routes":
         footer.append("[d/Esc] Dashboard  ", style="bold cyan")
+        footer.append("[r] Reload  ", style="bold green")
         footer.append("[m] Models  ", style="cyan")
         footer.append("[p] Providers  ", style="cyan")
         footer.append("[l] Limits  ", style="magenta")
         footer.append("[u] Usage", style="bold green")
     elif current_view == "welcome":
         footer.append("[d/Esc] Dashboard  ", style="bold cyan")
+        footer.append("[r] Reload  ", style="bold green")
         footer.append("[m] Models  ", style="cyan")
         footer.append("[p] Providers  ", style="cyan")
         footer.append("[l] Limits  ", style="magenta")
         footer.append("[u] Usage", style="bold green")
     elif current_view == "models":
         footer.append("[d/Esc] Dashboard  ", style="bold cyan")
+        footer.append("[r] Reload  ", style="bold green")
         footer.append("[n] Next Page  ", style="white")
         footer.append("[b] Prev Page  ", style="white")
         footer.append("[f] Fetch from Provider  ", style="bold yellow")
@@ -1064,6 +1068,7 @@ def render_footer(current_view: str = "dashboard", notification: str = "") -> Te
         footer.append("[u] Usage", style="bold green")
     elif current_view == "providers":
         footer.append("[d/Esc] Dashboard  ", style="bold cyan")
+        footer.append("[r] Reload  ", style="bold green")
         footer.append("[m] View Models  ", style="cyan")
         footer.append("[u] Usage  ", style="bold green")
         footer.append("[n] Next Page  ", style="white")
@@ -1071,6 +1076,7 @@ def render_footer(current_view: str = "dashboard", notification: str = "") -> Te
         footer.append("[t] Test Active Model", style="green")
     elif current_view == "limits":
         footer.append("[d/Esc] Dashboard  ", style="bold cyan")
+        footer.append("[r] Reload  ", style="bold green")
         footer.append("[m] View Models  ", style="cyan")
         footer.append("[p] View Providers  ", style="cyan")
         footer.append("[u] Usage  ", style="bold green")
@@ -1078,6 +1084,7 @@ def render_footer(current_view: str = "dashboard", notification: str = "") -> Te
         footer.append("[b] Prev Page", style="white")
     elif current_view == "usage":
         footer.append("[d/Esc] Dashboard  ", style="bold cyan")
+        footer.append("[r] Reload  ", style="bold green")
         footer.append("[n] Models & History  ", style="white")
         footer.append("[b] Overview  ", style="white")
         footer.append("[p] Providers  ", style="cyan")
@@ -1085,6 +1092,7 @@ def render_footer(current_view: str = "dashboard", notification: str = "") -> Te
         footer.append("[t] Quick Test", style="green")
     else:
         footer.append("[d/Esc] Dashboard  ", style="bold cyan")
+        footer.append("[r] Reload  ", style="bold green")
         footer.append("[m] Models  ", style="cyan")
         footer.append("[p] Providers  ", style="cyan")
         footer.append("[u] Usage", style="bold green")

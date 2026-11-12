@@ -166,7 +166,11 @@ def _poll_keyboard_char(timeout_sec: float = 0.25) -> Optional[str]:
                         return "left"
                     elif ch2 == b"M":
                         return "right"
+                    elif ch2 == b"?":  # F5 function key
+                        return "f5"
                     return None
+                if ch == b"\x12":  # Ctrl+R
+                    return "ctrl_r"
                 if ch == b"\x1b":
                     return "esc"
                 try:
@@ -221,7 +225,7 @@ def stop(
 
 _VIEW_TOGGLE_MAP = {
     "w": (TUIView.WELCOME, "WELCOME VIEW | Press [d] or [w] to return to Dashboard"),
-    "r": (TUIView.ROUTES, "ROUTING GRAPH | Press [d] or [r] to return to Dashboard"),
+    "g": (TUIView.ROUTES, "ROUTING GRAPH | Press [d] or [g] to return to Dashboard"),
     "m": (TUIView.MODELS, "MODELS VIEW | [n] Next | [b] Back | [f] Fetch | [d] Dashboard"),
     "p": (TUIView.PROVIDERS, "PROVIDERS DIRECTORY | [n] Next | [b] Back | [d] Dashboard"),
     "l": (TUIView.LIMITS, "LIMITS & QUOTAS MATRIX | [n] Next | [b] Back | [d] Dashboard"),
@@ -260,6 +264,15 @@ def _handle_tui_keypress(
         dashboard.next_page()
     elif ch in ("b", "left", "up", "k"):
         dashboard.prev_page()
+    elif ch in ("r", "f5", "ctrl_r"):
+        dashboard.set_notification("RELOADING | Refreshing configuration, Hermes backends & pings...", duration=6.0)
+        def _bg_reload():
+            res = dashboard.reload_and_refresh(f"http://{cfg.host}:{cfg.port}")
+            dashboard.set_notification(
+                f"RELOAD COMPLETE | {res['online']}/{res['total']} nodes online ({res.get('models', 0)} models)",
+                duration=4.5
+            )
+        threading.Thread(target=_bg_reload, daemon=True).start()
     elif ch == "t":
         dashboard.set_notification("Testing active inference route with auto cascade...")
         threading.Thread(target=_dispatch_test_request, args=(cfg.port,), daemon=True).start()
@@ -431,6 +444,85 @@ def probe(
         table.add_row(item["name"], item["type"].value, item["base_url"], str(item["port"]), f"[{item['status']}]")
 
     console.print(table)
+
+
+@app.command(name="reload")
+def reload_cmd(
+    host: Optional[str] = typer.Option(None, "--host", "-h", help="Host of running Xenrouter daemon"),
+    port: Optional[int] = typer.Option(None, "--port", "-p", help="Port of running Xenrouter daemon"),
+    config_file: Optional[str] = typer.Option(None, "--config", "-c", help="Path to xenrouter.yaml"),
+):
+    """Reload configuration, re-discover Hermes backends, and re-probe all provider health."""
+    real_cfg_file = config_file if isinstance(config_file, (str, Path)) else None
+    cfg = load_config(real_cfg_file)
+    target_host = host if isinstance(host, str) else cfg.host
+    target_port = port if isinstance(port, int) else cfg.port
+    base_url = f"http://{target_host}:{target_port}"
+
+    console.print(f"[bold cyan]Reloading Xenrouter at {base_url}...[/bold cyan]")
+    try:
+        with httpx.Client(timeout=20.0) as client:
+            resp = client.post(f"{base_url}/v1/reload")
+            if resp.status_code == 200:
+                data = resp.json()
+                b_resp = client.get(f"{base_url}/v1/backends")
+                backends = b_resp.json().get("backends", []) if b_resp.status_code == 200 else []
+
+                table = Table(
+                    title=f"XENROUTER RELOADED | {data.get('online_backends_count')}/{data.get('total_backends_count')} ONLINE | {data.get('models_count')} MODELS",
+                    box=box.ROUNDED,
+                    border_style="green"
+                )
+                table.add_column("Provider", style="bold white")
+                table.add_column("Status", style="bold")
+                table.add_column("Latency", justify="right")
+                table.add_column("Models", justify="right")
+                table.add_column("Keys", justify="right")
+
+                for b in backends:
+                    status_style = "green" if b.get("status") == "online" else "dim red"
+                    lat_str = f"{b.get('latency_ms', 0):.0f}ms" if b.get("latency_ms", 0) > 0 else "-"
+                    table.add_row(
+                        b.get("name", "-"),
+                        Text(b.get("status", "-").upper(), style=status_style),
+                        lat_str,
+                        str(b.get("models_count", 0)),
+                        str(b.get("keys_count", 0))
+                    )
+
+                console.print(table)
+                console.print(f"[bold green]Reload successful: {data.get('online_backends_count')}/{data.get('total_backends_count')} nodes online in {base_url}[/bold green]\n")
+                return
+    except Exception as exc:
+        console.print(f"[yellow]Daemon at {base_url} unreachable ({exc}). Running offline reload & health check...[/yellow]")
+
+    reg = BackendRegistry()
+    for b_cfg in cfg.backends:
+        reg.register(b_cfg)
+    if cfg.import_hermes_providers:
+        try:
+            for h_cfg in discover_hermes_backends():
+                if not reg.get(h_cfg.name):
+                    reg.register(h_cfg)
+        except Exception:
+            pass
+
+    async def _offline_check():
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=3.0)) as cl:
+            await reg.refresh_all(cl)
+
+    asyncio.run(_offline_check())
+    console.print(f"[bold green]Offline refresh complete: {len(reg.online())}/{len(reg.all())} providers online.[/bold green]\n")
+
+
+@app.command(name="refresh")
+def refresh_cmd(
+    host: Optional[str] = typer.Option(None, "--host", "-h", help="Host of running Xenrouter daemon"),
+    port: Optional[int] = typer.Option(None, "--port", "-p", help="Port of running Xenrouter daemon"),
+    config_file: Optional[str] = typer.Option(None, "--config", "-c", help="Path to xenrouter.yaml"),
+):
+    """Alias for 'xenrouter reload'."""
+    reload_cmd(host=host, port=port, config_file=config_file)
 
 
 @app.command()

@@ -141,6 +141,26 @@ class TUIDashboard:
         except Exception:
             pass
 
+    def reload_and_refresh(self, base_url: str = "http://127.0.0.1:8989") -> Dict[str, Any]:
+        """Trigger full reload & refresh on daemon or local registry."""
+        result = {"status": "ok", "online": 0, "total": 0, "models": 0}
+        try:
+            with httpx.Client(timeout=15.0) as client:
+                r = client.post(f"{base_url}/v1/reload")
+                if r.status_code == 200:
+                    data = r.json()
+                    result["online"] = data.get("online_backends_count", 0)
+                    result["total"] = data.get("total_backends_count", 0)
+                    result["models"] = data.get("models_count", 0)
+        except Exception:
+            pass
+
+        self.sync_from_remote(base_url)
+        if result["total"] == 0:
+            result["online"] = len(self.registry.online())
+            result["total"] = len(self.registry.all())
+        return result
+
     def get_usage_data(self) -> Dict[str, Any]:
         """Return live usage summary from remote daemon (when attached) or local tracker."""
         if self.is_remote and self.remote_usage is not None:

@@ -189,3 +189,22 @@ def test_three_keys_exhaustion_before_cascade():
         assert u_data["this_month"]["total_tokens"] == 23
         assert u_data["providers_today"][0]["provider"] == "google"
 
+
+def test_reload_and_refresh_endpoints(test_setup):
+    client, backend, state = test_setup
+
+    # Test POST /v1/reload
+    resp_reload = client.post("/v1/reload")
+    assert resp_reload.status_code == 200
+    data_r = resp_reload.json()
+    assert data_r["status"] == "ok"
+    assert "online_backends_count" in data_r
+    assert "total_backends_count" in data_r
+
+    # Test GET /v1/refresh
+    resp_refresh = client.get("/v1/refresh")
+    assert resp_refresh.status_code == 200
+    data_ref = resp_refresh.json()
+    assert data_ref["status"] == "ok"
+
+
